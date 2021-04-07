@@ -32,6 +32,17 @@
         <retrofit.version>2.3.0</retrofit.version>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>rdc-releases</id>
+            <url>https://repo.rdc.aliyun.com/repository/44174-release-GnFs8t/</url>
+        </repository>
+        <snapshotRepository>
+            <id>rdc-snapshots</id>
+            <url>https://repo.rdc.aliyun.com/repository/44174-snapshot-n3HQ2q/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <dependencyManagement>
         <dependencies>
             <!-- javaparser -->
