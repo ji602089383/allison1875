@@ -48,6 +48,9 @@ public class RequestMappingProc {
                     String[] urls = itr.next().split("/");
                     StringBuilder result = new StringBuilder();
                     for (int i = 0; i < urls.length; i ++){
+                        if("".equals(urls[i])){
+                            continue;
+                        }
                         if(globalUrlPrefixIndex == i){
                             result.append(globalUrlPrefix).append("/").append(urls[i]);
                         }else{
