@@ -1,5 +1,7 @@
 package com.spldeolin.allison1875.persistencegenerator.processor;
 
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -13,7 +15,6 @@ import com.spldeolin.allison1875.base.exception.QualifierAbsentException;
 import com.spldeolin.allison1875.base.factory.JavabeanFactory;
 import com.spldeolin.allison1875.base.factory.javabean.FieldArg;
 import com.spldeolin.allison1875.base.factory.javabean.JavabeanArg;
-import com.spldeolin.allison1875.base.util.ast.Saves;
 import com.spldeolin.allison1875.persistencegenerator.PersistenceGeneratorConfig;
 import com.spldeolin.allison1875.persistencegenerator.facade.javabean.PropertyDto;
 import com.spldeolin.allison1875.persistencegenerator.javabean.EntityGeneration;
@@ -47,10 +48,18 @@ public class GenerateEntityProc {
                 cu.getImports().removeIf(ipt -> ipt.getNameAsString().equals(AnnotationConstant.ACCESSORS_QUALIFIER));
                 String superEntityName = superEntityQualifier.substring(superEntityQualifier.lastIndexOf('.') + 1);
                 javabean.addExtendedType(superEntityName);
-                javabean.addImplementedType("Cloneable");
                 javabean.addAnnotation(AnnotationConstant.EQUALS_AND_HASH_CODE);
                 javabean.getAnnotations().removeIf(anno -> anno.getNameAsString().equals("Accessors"));
-                javabean.addMember(StaticJavaParser.parseBodyDeclaration(
+            }
+            if (BooleanUtils.isTrue(persistenceGeneratorConfig.getEnableEntityImplementSerializable())) {
+                cu.addImport("java.io.Serializable");
+                javabean.addImplementedType("Serializable");
+                javabean.getMembers().addFirst(StaticJavaParser.parseBodyDeclaration(
+                        "private static final long serialVersionUID = " + RandomUtils.nextLong() + "L;"));
+            }
+            if (BooleanUtils.isTrue(persistenceGeneratorConfig.getEnableEntityImplementCloneable())) {
+                javabean.addImplementedType("Cloneable");
+                javabean.getMembers().addLast(StaticJavaParser.parseBodyDeclaration(
                         "@Override public Object clone() throws CloneNotSupportedException { return super.clone(); }"));
             }
         });
@@ -71,7 +80,6 @@ public class GenerateEntityProc {
             return new EntityGeneration().setSameNameAndLotNoPresent(true);
         }
 
-        Saves.add(cu);
 
         EntityGeneration result = new EntityGeneration();
         result.setJavabeanArg(arg);
@@ -79,6 +87,7 @@ public class GenerateEntityProc {
         result.setEntityName(arg.getClassName());
         result.setEntityQualifier(cu.getPrimaryType().orElseThrow(QualifierAbsentException::new).getFullyQualifiedName()
                 .orElseThrow(QualifierAbsentException::new));
+        result.setEntityCu(cu);
         return result;
     }
 

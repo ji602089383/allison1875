@@ -17,7 +17,6 @@ import com.spldeolin.allison1875.base.constant.ImportConstants;
 import com.spldeolin.allison1875.base.util.ast.Imports;
 import com.spldeolin.allison1875.base.util.ast.Saves;
 import com.spldeolin.allison1875.handlertransformer.HandlerTransformerConfig;
-import com.spldeolin.allison1875.handlertransformer.handle.CreateServiceMethodHandle;
 import com.spldeolin.allison1875.handlertransformer.handle.MoreTransformHandle;
 import com.spldeolin.allison1875.handlertransformer.handle.javabean.HandlerCreation;
 import com.spldeolin.allison1875.handlertransformer.javabean.FirstLineDto;
@@ -38,9 +37,6 @@ public class HandlerTransformer implements Allison1875MainProcessor {
     private HandlerTransformerConfig handlerTransformerConfig;
 
     @Inject
-    private CreateServiceMethodHandle createServiceMethodHandle;
-
-    @Inject
     private ControllerProc controllerProc;
 
     @Inject
@@ -54,9 +50,6 @@ public class HandlerTransformer implements Allison1875MainProcessor {
 
     @Inject
     private DtoProc dtoProc;
-
-    @Inject
-    private ServiceProc serviceProc;
 
     @Inject
     private ParseFirstLineProc parseFirstLineProc;
@@ -77,7 +70,7 @@ public class HandlerTransformer implements Allison1875MainProcessor {
             for (ClassOrInterfaceDeclaration controller : controllerProc.collect(cu)) {
                 for (InitializerDeclaration init : initializerCollectProc.collectInitializer(controller)) {
                     BlockStmt initBody = init.getBody().clone();
-                    FirstLineDto firstLineDto = parseFirstLineProc.parse(init.getBody().getStatements());
+                    FirstLineDto firstLineDto = parseFirstLineProc.parse(init);
                     if (firstLineDto == null) {
                         continue;
                     }
@@ -95,8 +88,8 @@ public class HandlerTransformer implements Allison1875MainProcessor {
                     List<ClassOrInterfaceDeclaration> dtos = dtoProc.collectDtosFromBottomToTop(initBody);
 
                     // 创建所有所需的Javabean
-                    ReqDtoRespDtoInfo reqDtoRespDtoInfo = reqRespProc
-                            .createJavabeans(astForest, cu, firstLineDto, dtos);
+                    ReqDtoRespDtoInfo reqDtoRespDtoInfo = reqRespProc.createJavabeans(astForest, cu, firstLineDto,
+                            dtos);
 
                     // 创建Service Pair
                     GenerateServiceParam param = new GenerateServiceParam();
@@ -111,17 +104,15 @@ public class HandlerTransformer implements Allison1875MainProcessor {
                         continue;
                     }
 
-                    // 在controller中创建handler
-                    HandlerCreation handlerCreation = controllerProc
-                            .createHandlerToController(firstLineDto, controller, serviceGeneration, reqDtoRespDtoInfo);
-
-                    // 从controller中删除init
-                    boolean anyTransformed = init.remove();
-                    log.info("delete Initializer [{}] from Controller [{}].", firstLineDto,
-                            controller.getNameAsString());
+                    // 在controller中创建handler，并替换掉
+                    HandlerCreation handlerCreation = controllerProc.createHandlerToController(firstLineDto, controller,
+                            serviceGeneration, reqDtoRespDtoInfo);
 
                     // 每个Initializer转化完毕后SaveAll一次
-                    if (anyTransformed) {
+                    if (handlerCreation.getAnyTransformed()) {
+                        log.info("replace Initializer [{}] to Handler [{}] in Controller [{}].", firstLineDto,
+                                handlerCreation.getHandler().getName(), controller.getName());
+
                         Imports.ensureImported(cu, handlerTransformerConfig.getPageTypeQualifier());
                         Imports.ensureImported(cu, AnnotationConstant.REQUEST_BODY_QUALIFIER);
                         Imports.ensureImported(cu, AnnotationConstant.VALID_QUALIFIER);
@@ -131,9 +122,8 @@ public class HandlerTransformer implements Allison1875MainProcessor {
                         Saves.add(cu);
 
                         // 更多的转化操作
-                        Collection<CompilationUnit> moreCus = moreTransformHandle
-                                .transform(astForest.clone(), firstLineDto, handlerCreation,
-                                        reqDtoRespDtoInfo.getDtoQualifiers());
+                        Collection<CompilationUnit> moreCus = moreTransformHandle.transform(astForest.clone(),
+                                firstLineDto, handlerCreation, reqDtoRespDtoInfo.getDtoQualifiers());
                         moreCus.forEach(Saves::add);
 
                         Saves.saveAll();

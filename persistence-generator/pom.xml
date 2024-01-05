@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.spldeolin.allison1875</groupId>
         <artifactId>allison1875</artifactId>
-        <version>8.8</version>
+        <version>9.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -22,10 +22,10 @@
             <version>${project.parent.version}</version>
         </dependency>
 
-        <!-- jodd db -->
+        <!-- jooq -->
         <dependency>
-            <groupId>org.jodd</groupId>
-            <artifactId>jodd-db</artifactId>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
         </dependency>
 
         <!-- mysql -->
